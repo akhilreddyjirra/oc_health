@@ -1,0 +1,16 @@
+---
+- name: Gather facts for routes,svc
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: "Gather facts for {{item.kind}} in a namespaces"
+      k8s_facts:
+        kind: "{{ item.kind }}"
+        name: "{{ item.name }}"
+        namespace: "{{ item.ns }}"
+      with_items:
+      - { kind: Route, name: router, ns: default }
+      - { kind: Service, name: router, ns: default}
+      register: item_facts
+    - debug:
+        var: item_facts

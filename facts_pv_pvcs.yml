@@ -1,0 +1,17 @@
+---
+- name: Gather facts for PV and PVCs
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: facts for PVs in all namespaces
+      k8s_facts:
+        kind: PersistentVolume
+      register: pv_facts
+    - debug:
+        var: pv_facts
+    - name: facts for PVCs in all namespaces
+      k8s_facts:
+        kind: PersistentVolumeClaim
+      register: pvcs_facts
+    - debug:
+        var: pvcs_facts

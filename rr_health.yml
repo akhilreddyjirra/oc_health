@@ -1,0 +1,61 @@
+---
+- name: Gather facts for running pods
+  hosts: localhost
+  connection: local
+  tasks:
+    # - name: Search for all running pods
+    #   k8s_facts:
+    #     kind: Pod
+    #     namespace: default
+    #     field_selectors:
+    #       - status.phase=Running
+    #   register: pod_list
+    # - debug:
+    #     var: pod_lists
+    - name: Get running status of router
+      raw: oc -n default get deploymentconfigs/router
+      register: reg_lists
+    - debug:
+        var: reg_lists.stdout_lines
+    - name: get value of router desired pods
+      raw: oc -n default get deploymentconfigs/router | awk 'FNR ==2 {print $3}'
+      register: desired
+    - debug:
+        var: desired.stdout_lines
+    - name: get value of router current pods
+      raw: oc -n default get deploymentconfigs/router | awk 'FNR ==2 {print $4}'
+      register: current
+    - debug:
+        var: current.stdout_lines
+    - name: compare desired and current 
+      debug:
+        msg: "values are equal in router"
+      when: desired.stdout_lines == current.stdout_lines
+
+    - name: Get running status of docker-registry
+      raw: oc -n default get deploymentconfigs/docker-registry
+      register: reg_lists
+    - debug:
+        var: reg_lists.stdout_lines
+    - name: get value of docker-registry desired pods
+      raw: oc -n default get deploymentconfigs/docker-registry | awk 'FNR ==2 {print $3}'
+      register: desired
+    - debug:
+        var: desired.stdout_lines
+    - name: get value of docker-registry current pods
+      raw: oc -n default get deploymentconfigs/docker-registry | awk 'FNR ==2 {print $4}'
+      register: current
+    - debug:
+        var: current.stdout_lines
+    - name: compare desired and current of docker-registry
+      debug:
+        msg: "values are equal in docker-registry"
+      when: desired.stdout_lines == current.stdout_lines
+
+    - name: Get running status of pods in default namespace
+      raw: oc -n default get pods -o wide
+      register: reg_lists
+    - debug:
+        var: reg_lists.stdout_lines
+
+

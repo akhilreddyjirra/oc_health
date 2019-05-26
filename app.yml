@@ -1,0 +1,127 @@
+---
+- name: healthcheck of openshift cluster
+  hosts: localhost
+  connection: local
+  tasks:
+    # - name: oc get nodes
+    #   k8s_facts:
+    #     kind: nodes
+    #   register: output
+    #   tags: getnodes
+    # - debug: var=output
+    #   tags: getnodes
+    - name: Get nodes status
+      raw: oc  get nodes
+      register: nodes_lists
+      tags: nodes
+    - debug:
+        var: nodes_lists.stdout_lines
+      tags: nodes   
+      
+    - name: Create a namespace validate
+      k8s:
+        name: validate
+        api_version: v1
+        kind: Namespace
+        state: present
+      tags: newapp
+
+    - name: "Delete namespace validate"
+      k8s:
+        name: "{{ item.name }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+      tags: deletens
+      with_items:
+      - { name: validate }
+
+    - name: Create a nginx deployment from an inline definition
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: DeploymentConfig
+          metadata:
+            annotations:
+            name: nginx
+            namespace: validate
+          spec:
+            replicas: 1
+            selector:
+              name: nginx
+            strategy:
+              type: Rolling
+            template:
+              metadata:
+                labels:
+                  name: nginx
+                name: nginx
+              spec:
+                containers:
+                - env: []
+                  image: k8s.gcr.io/nginx:1.7.9
+                  livenessProbe:
+                    httpGet:
+                      path: "/"
+                      port: 80
+                    initialDelaySeconds: 30
+                    timeoutSeconds: 3
+                  name: nginx-example
+                  ports:
+                  - containerPort: 80
+                  readinessProbe:
+                    httpGet:
+                      path: "/"
+                      port: 80
+                    initialDelaySeconds: 3
+                    timeoutSeconds: 3
+                  resources:
+                    limits:
+                      memory: 512Mi
+      tags: newapp  
+    - name: Create a nginx Service object
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            annotations:
+              description: Exposes and load balances the application pods
+            name: nginx
+            namespace: validate
+          spec:
+            ports:
+            - name: web
+              port: 80
+              targetPort: 80
+            selector:
+              name: nginx
+      tags: newapp
+    - name: Create a router nginx
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Route
+          metadata:
+            name: nginx
+            namespace: validate
+          spec:
+            host: ""
+            to:
+              kind: Service
+              name: nginx
+      tags: newapp
+    - name: Get pods status
+      raw: oc -n validate get pods 
+      register: pod_lists
+      tags: newapp
+    - debug:
+        var: pod_lists.stdout_lines
+      tags: newapp
+
+    - name: compare desired and curret pods of router
+      include: compare_router.yml
+      tags: routerpods
